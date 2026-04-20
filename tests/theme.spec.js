@@ -130,6 +130,42 @@ test('Ocean Blue — food (#ffd54f) on bg (#061421) meets AA graphics standard (
   expect(contrastRatio('#ffd54f', '#061421')).toBeGreaterThanOrEqual(3);
 });
 
+// ── AC: WCAG AA contrast ratios — remaining themes ───────────────────────────
+// AA: text >= 4.5:1, graphics/UI elements (accent, food) >= 3:1
+// Note: short-hand hex (#111) expanded to 6-digit (#111111) for hexToRgb compatibility.
+
+test('Cyberpunk — text (#eeeeee) on bg (#0d0d1a) meets AA text standard (4.5:1)', () => {
+  expect(contrastRatio('#eeeeee', '#0d0d1a')).toBeGreaterThanOrEqual(4.5);
+});
+
+test('Cyberpunk — accent (#f72585) on bg (#0d0d1a) meets AA graphics standard (3:1)', () => {
+  expect(contrastRatio('#f72585', '#0d0d1a')).toBeGreaterThanOrEqual(3);
+});
+
+test('Retro Green — text (#c8ffc8) on bg (#0a120a) meets AA text standard (4.5:1)', () => {
+  expect(contrastRatio('#c8ffc8', '#0a120a')).toBeGreaterThanOrEqual(4.5);
+});
+
+test('Retro Green — accent (#39ff14) on bg (#0a120a) meets AA graphics standard (3:1)', () => {
+  expect(contrastRatio('#39ff14', '#0a120a')).toBeGreaterThanOrEqual(3);
+});
+
+test('Neon Pink — text (#ffe0ff) on bg (#1a0a1e) meets AA text standard (4.5:1)', () => {
+  expect(contrastRatio('#ffe0ff', '#1a0a1e')).toBeGreaterThanOrEqual(4.5);
+});
+
+test('Neon Pink — accent (#ff10f0) on bg (#1a0a1e) meets AA graphics standard (3:1)', () => {
+  expect(contrastRatio('#ff10f0', '#1a0a1e')).toBeGreaterThanOrEqual(3);
+});
+
+test('Monochrome — text (#eeeeee) on bg (#111111) meets AA text standard (4.5:1)', () => {
+  expect(contrastRatio('#eeeeee', '#111111')).toBeGreaterThanOrEqual(4.5);
+});
+
+test('Monochrome — accent (#ffffff) on bg (#111111) meets AA graphics standard (3:1)', () => {
+  expect(contrastRatio('#ffffff', '#111111')).toBeGreaterThanOrEqual(3);
+});
+
 // ── AC: Performance — theme switch < 5ms ─────────────────────────────────────
 
 test('applyTheme() completes in under 5ms', async ({ page }) => {
