@@ -7,22 +7,33 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
+    :root {
+      --bg: #1a1a2e;
+      --game-bg: #0f0f1a;
+      --accent: #4ecca3;
+      --food: #ff6b6b;
+      --text: #eee;
+      --text-muted: #aaa;
+    }
+
     body {
-      background: #1a1a2e;
+      background: var(--bg);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       height: 100vh;
       font-family: monospace;
-      color: #eee;
+      color: var(--text);
+      transition: background 0.2s;
     }
 
     h1 {
       font-size: 2rem;
       letter-spacing: 0.2em;
       margin-bottom: 12px;
-      color: #4ecca3;
+      color: var(--accent);
+      transition: color 0.2s;
     }
 
     #score-board {
@@ -32,18 +43,50 @@
       font-size: 1rem;
     }
 
-    #score-board span { color: #4ecca3; font-weight: bold; }
+    #score-board span { color: var(--accent); font-weight: bold; transition: color 0.2s; }
 
     canvas {
-      border: 2px solid #4ecca3;
+      border: 2px solid var(--accent);
       display: block;
+      transition: border-color 0.2s;
     }
 
     #message {
       margin-top: 16px;
       font-size: 0.9rem;
-      color: #aaa;
+      color: var(--text-muted);
       min-height: 1.2em;
+      transition: color 0.2s;
+    }
+
+    #theme-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      font-size: 0.85rem;
+    }
+
+    #theme-row label {
+      color: var(--text-muted);
+      transition: color 0.2s;
+    }
+
+    #theme-select {
+      background: var(--game-bg);
+      color: var(--text);
+      border: 1px solid var(--accent);
+      font-family: monospace;
+      font-size: 0.85rem;
+      padding: 4px 8px;
+      cursor: pointer;
+      outline: none;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+
+    #theme-select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent);
     }
   </style>
 </head>
@@ -53,15 +96,119 @@
     Score: <span id="score">0</span>
     &nbsp;&nbsp;Best: <span id="best">0</span>
   </div>
+  <div id="theme-row">
+    <label for="theme-select">Theme:</label>
+    <select id="theme-select">
+      <option value="cyberpunk">Cyberpunk</option>
+      <option value="retro-green">Retro Green</option>
+      <option value="neon-pink">Neon Pink</option>
+      <option value="ocean-blue">Ocean Blue</option>
+      <option value="monochrome">Monochrome</option>
+    </select>
+  </div>
   <canvas id="game" width="400" height="400"></canvas>
   <p id="message">Press any arrow key to start</p>
 
   <script>
+    // ─── Theme definitions ────────────────────────────────────────────────────
+    const THEMES = {
+      'cyberpunk': {
+        name: 'Cyberpunk',
+        bg: '#0d0d1a',
+        gameBg: '#050510',
+        gridDot: '#14143a',
+        accent: '#f72585',
+        food: '#7209b7',
+        text: '#eee',
+        textMuted: '#b5b5d8',
+        snakeHead: '#f72585',
+        snakeGrad: function(t) { return 'hsl(' + (290 - t * 50) + ', 80%, ' + (55 - t * 15) + '%)'; }
+      },
+      'retro-green': {
+        name: 'Retro Green',
+        bg: '#0a120a',
+        gameBg: '#050a05',
+        gridDot: '#0e1a0e',
+        accent: '#39ff14',
+        food: '#ffff00',
+        text: '#c8ffc8',
+        textMuted: '#6abf6a',
+        snakeHead: '#39ff14',
+        snakeGrad: function(t) { return 'hsl(' + (120 - t * 20) + ', 80%, ' + (45 - t * 15) + '%)'; }
+      },
+      'neon-pink': {
+        name: 'Neon Pink',
+        bg: '#1a0a1e',
+        gameBg: '#100614',
+        gridDot: '#280e30',
+        accent: '#ff10f0',
+        food: '#00ff9f',
+        text: '#ffe0ff',
+        textMuted: '#d088d0',
+        snakeHead: '#ff10f0',
+        snakeGrad: function(t) { return 'hsl(' + (300 - t * 30) + ', 85%, ' + (55 - t * 15) + '%)'; }
+      },
+      // Ocean Blue — WCAG AA verified:
+      //   text #e1f5fe on bg #061421 → ~15.5:1  (AA requires 4.5:1)
+      //   accent #29b6f6 on bg #061421 → ~8.5:1  (AA requires 4.5:1)
+      //   food #ffd54f on bg #061421  → ~13.2:1  (AA requires 4.5:1)
+      'ocean-blue': {
+        name: 'Ocean Blue',
+        bg: '#061421',
+        gameBg: '#040d17',
+        gridDot: '#0c2035',
+        accent: '#29b6f6',
+        food: '#ffd54f',
+        text: '#e1f5fe',
+        textMuted: '#81d4fa',
+        snakeHead: '#29b6f6',
+        snakeGrad: function(t) { return 'hsl(' + (205 - t * 20) + ', 70%, ' + (50 - t * 15) + '%)'; }
+      },
+      'monochrome': {
+        name: 'Monochrome',
+        bg: '#111',
+        gameBg: '#0a0a0a',
+        gridDot: '#1a1a1a',
+        accent: '#ffffff',
+        food: '#888888',
+        text: '#eeeeee',
+        textMuted: '#888888',
+        snakeHead: '#ffffff',
+        snakeGrad: function(t) { return 'hsl(0, 0%, ' + (70 - t * 30) + '%)'; }
+      }
+    };
+
+    const THEME_STORAGE_KEY = 'snake-theme';
+
+    // ─── Apply theme to CSS variables and canvas draws ────────────────────────
+    var currentTheme = THEMES['ocean-blue'];
+
+    function applyTheme(key) {
+      var theme = THEMES[key];
+      if (!theme) return;
+      currentTheme = theme;
+
+      var r = document.documentElement.style;
+      r.setProperty('--bg', theme.bg);
+      r.setProperty('--game-bg', theme.gameBg);
+      r.setProperty('--accent', theme.accent);
+      r.setProperty('--food', theme.food);
+      r.setProperty('--text', theme.text);
+      r.setProperty('--text-muted', theme.textMuted);
+
+      localStorage.setItem(THEME_STORAGE_KEY, key);
+
+      // Redraw canvas immediately — does not touch game state
+      if (typeof draw === 'function') draw();
+    }
+
+    // ─── Canvas setup ─────────────────────────────────────────────────────────
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
     const scoreEl = document.getElementById('score');
     const bestEl = document.getElementById('best');
     const msgEl = document.getElementById('message');
+    const themeSelect = document.getElementById('theme-select');
 
     const GRID = 20;
     const COLS = canvas.width / GRID;
@@ -116,11 +263,13 @@
     }
 
     function draw() {
-      ctx.fillStyle = '#0f0f1a';
+      var t = currentTheme;
+
+      ctx.fillStyle = t.gameBg;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       // Grid dots
-      ctx.fillStyle = '#1e1e3a';
+      ctx.fillStyle = t.gridDot;
       for (let x = 0; x < COLS; x++) {
         for (let y = 0; y < ROWS; y++) {
           ctx.fillRect(x * GRID + GRID/2 - 1, y * GRID + GRID/2 - 1, 2, 2);
@@ -128,8 +277,8 @@
       }
 
       // Food
-      ctx.fillStyle = '#ff6b6b';
-      ctx.shadowColor = '#ff6b6b';
+      ctx.fillStyle = t.food;
+      ctx.shadowColor = t.food;
       ctx.shadowBlur = 10;
       ctx.beginPath();
       ctx.arc(food.x * GRID + GRID/2, food.y * GRID + GRID/2, GRID/2 - 2, 0, Math.PI * 2);
@@ -138,9 +287,9 @@
 
       // Snake
       snake.forEach((seg, i) => {
-        const t = i / snake.length;
-        ctx.fillStyle = i === 0 ? '#4ecca3' : `hsl(${160 - t * 40}, 60%, ${50 - t * 15}%)`;
-        ctx.shadowColor = i === 0 ? '#4ecca3' : 'transparent';
+        const frac = i / snake.length;
+        ctx.fillStyle = i === 0 ? t.snakeHead : t.snakeGrad(frac);
+        ctx.shadowColor = i === 0 ? t.snakeHead : 'transparent';
         ctx.shadowBlur = i === 0 ? 8 : 0;
         const pad = i === 0 ? 1 : 2;
         ctx.fillRect(seg.x * GRID + pad, seg.y * GRID + pad, GRID - pad * 2, GRID - pad * 2);
@@ -177,7 +326,19 @@
       if (!running) start();
     });
 
-    init();
+    // Theme selector change — no game state reset
+    themeSelect.addEventListener('change', function() {
+      applyTheme(this.value);
+    });
+
+    // ─── Bootstrap: load saved theme, then init game ──────────────────────────
+    (function bootstrap() {
+      var saved = localStorage.getItem(THEME_STORAGE_KEY);
+      var key = (saved && THEMES[saved]) ? saved : 'ocean-blue';
+      themeSelect.value = key;
+      applyTheme(key);
+      init();
+    })();
   </script>
 </body>
 </html>
