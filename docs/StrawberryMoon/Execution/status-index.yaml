@@ -1,0 +1,22 @@
+# Auto-generated — do not edit manually
+# Updated: 2026-04-20T12:27:21.838Z
+
+documents:
+  - path: docs/StrawberryMoon/Execution/snake-game-now-plays-in-your-favorite-colors-with-full-themi/1.theming-system-color-customization/1.1.enable-blue-theme-selection.story.md
+    id: ebcc13d4-969a-4b22-98cc-002cf58c18e5
+    category: user-story
+    status: Draft
+    parent_epic: 1.theming-system-color-customization.epic.md
+  - path: docs/StrawberryMoon/Execution/snake-game-now-plays-in-your-favorite-colors-with-full-themi.pr.md
+    id: 136ad767-f150-43d6-9945-2fb72c0bb6d8
+    category: press-release
+    status: Draft
+    period: Q1 FY27
+    targetDate: 2026-05-31
+  - path: docs/StrawberryMoon/Execution/snake-game-now-plays-in-your-favorite-colors-with-full-themi/1.theming-system-color-customization.epic.md
+    id: 715d9595-b832-4a58-b51a-de7190bc2aa7
+    category: epic
+    status: Draft
+    moscow: Must
+    tshirt: L
+    parent_press_release: snake-game-now-plays-in-your-favorite-colors-with-full-themi.pr.md
