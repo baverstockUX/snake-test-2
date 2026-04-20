@@ -181,7 +181,8 @@
     const THEME_STORAGE_KEY = 'snake-theme';
 
     // ─── Apply theme to CSS variables and canvas draws ────────────────────────
-    var currentTheme = THEMES['ocean-blue'];
+    // currentTheme is set by the bootstrap() IIFE below before draw() is ever called.
+    var currentTheme;
 
     function applyTheme(key) {
       var theme = THEMES[key];
@@ -302,9 +303,11 @@
       running = false;
       msgEl.textContent = `Game over! Score: ${score} — Press any arrow key to restart`;
 
-      // Flash effect
-      ctx.fillStyle = 'rgba(255, 107, 107, 0.15)';
+      // Flash effect — use theme food colour so it stays consistent across themes
+      ctx.globalAlpha = 0.15;
+      ctx.fillStyle = currentTheme.food;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.globalAlpha = 1;
     }
 
     function start() {

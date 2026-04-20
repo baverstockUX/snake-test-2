@@ -1,149 +1,70 @@
-# Code Conventions — CADE UI
+# Code Conventions — Snake Game
 
 ## Stack & Tools
-- **Frontend**: React 18 with Vite (dev/build)
-- **Styling**: Tailwind CSS + PostCSS + DaisyUI
-- **Build**: Vite with JSX support
-- **Server**: Express.js (node server/index.js on port 7420)
-- **Font**: JetBrains Mono / Fira Code (monospace)
+- **Language**: Vanilla JavaScript (ES5/ES6), no framework, no bundler
+- **Markup**: Single HTML file (`index.html` at repo root)
+- **Styling**: Inline `<style>` block using CSS custom properties (`--bg`, `--accent`, etc.)
+- **Canvas**: HTML5 Canvas 2D API for all game rendering
+- **Storage**: `localStorage` for theme persistence (`snake-theme` key)
+- **Server**: None required — open `index.html` directly in a browser
+- **Tests**: Playwright (`tests/theme.spec.js`) — run with `npm test` from repo root
 
 ## Directory Structure
 ```
-cade-ui/src/
-  ├── App.jsx           # Main component, 3-column layout
-  ├── main.jsx          # Entry point, ReactDOM.render
-  ├── index.css         # Tailwind directives + base styles
-  ├── lib/              # Shared utilities
-  ├── hooks/            # Custom React hooks
-  └── components/       # UI components (stateful + layout)
+/
+├── index.html           # Entire game: markup + styles + JS in one file
+├── package.json         # Test runner only (@playwright/test)
+├── playwright.config.js # Playwright configuration
+├── tests/
+│   └── theme.spec.js    # Acceptance tests for theming system
+├── .strawberrymoon/     # Agent definitions and project conventions
+└── docs/                # StrawberryMoon planning documents
 ```
 
-## 1. Shared Utilities
-Import from `./lib/` for reusable helpers:
-- **`lib/colours.js`** → `TOOL_COLOURS`, `STATUS_BADGE`, `VERIFY_COLOURS`, `SEVERITY_COLOURS` + helper functions
-  - Use `toolColour(toolName)` for tool→Tailwind mapping
-  - Use `statusBadge(status)` for status→DaisyUI badge class
-  - Import: `import { toolColour, statusBadge, TOOL_COLOURS, STATUS_BADGE } from '../lib/colours'`
+## 1. Theme Definitions
+All themes live in the `THEMES` object in `index.html`:
+- Each key is a slug (e.g. `'ocean-blue'`) matching the `<option value="">` in the HTML
+- Each theme has: `name`, `bg`, `gameBg`, `gridDot`, `accent`, `food`, `text`, `textMuted`, `snakeHead`, `snakeGrad(t)`
+- `snakeGrad(t)` is a function receiving a 0–1 fraction and returning a CSS colour string
 
-When adding new utilities, create a new file in `lib/` and export named functions or constants.
+When adding a theme, add an entry to `THEMES` and a matching `<option>` in `#theme-select`.
 
-## 2. Error & Response Patterns
-**API errors** are caught and displayed inline in components:
-```javascript
-try {
-  const res = await fetch('/api/endpoint');
-  const data = await res.json();
-  if (res.ok && data.ok) {
-    // success
-  } else if (res.status === 409) {
-    return 'Specific error message';  // Pass back to caller
-  }
-  return 'Generic fallback message';
-} catch {
-  return 'Network or parse error — check server logs';
-}
-```
-- Always check `res.ok` AND `data.ok` before success
-- Return error strings for caller to display
-- Catch blocks swallow and return fallback message
+## 2. Applying Themes
+Use `applyTheme(key)` — it:
+1. Sets `currentTheme` to the new theme object
+2. Writes all CSS custom properties via `document.documentElement.style.setProperty`
+3. Persists `key` to `localStorage`
+4. Calls `draw()` immediately to repaint the canvas
 
-## 3. State Management
-Use `useAppState()` (in `hooks/useAppState.js`) as the single source of truth:
-- Fetches `/api/state`, `/api/repo`, `/api/processes` on mount
-- Listens to SSE events via `useSSE()` for real-time updates
-- Stores: stories, runs, activeRun, activeStory, completedStories, recentFiles, repo, processes, UI flags
-- Always destructure from `useAppState()`, don't pass state as props through 3+ levels
+Never mutate `currentTheme` directly. Always go through `applyTheme()`.
 
-## 4. Server-Sent Events (SSE)
-`useSSE()` hook in `hooks/useSSE.js` handles connection and auto-reconnect:
-- Connects to `/events` endpoint
-- Registered event types: `stories_updated`, `run_discovered`, `run_active_changed`, `log_lines`, `verify_updated`, `review_updated`, `active_story_changed`, `repo_changed`, `process_started`, `process_exited`
-- Auto-reconnects on error with 3s backoff
-- Calls `onReconnect()` on 2nd+ successful connection
+## 3. Canvas Rendering
+- `draw()` reads exclusively from `currentTheme` — no hardcoded colours in render code
+- Game-over flash uses `ctx.globalAlpha` for transparency; restore to `1` immediately after
+- Reset `ctx.shadowBlur` to `0` after every glow draw to avoid bleed-through
 
-## 5. Validation Patterns
-Inline validation for form inputs (see `LaunchModal.jsx`):
-```javascript
-function validateField(field, rawVal) {
-  const val = rawVal.trim();
-  if (val === '') return '';  // OK if empty (optional field)
-  if (field === 'budget') {
-    const n = parseFloat(val);
-    return (!isNaN(n) && n > 0) ? '' : 'Error message';
-  }
-  return '';
-}
-// On blur: setErrors(prev => ({ ...prev, [field]: validateField(field, val) }))
-```
-- Validate on blur, not on every keystroke
-- Return empty string for valid, error message for invalid
-- Use `Object.values(errors).some(Boolean)` to check for any errors
+## 4. State Management
+All game state is held in module-level `var` declarations:
+- `snake`, `dir`, `next`, `food`, `score`, `best`, `running`, `loop`
+- `currentTheme` — set by `applyTheme()`, read by `draw()`
+- Theme is initialised by the `bootstrap()` IIFE at the bottom of the script
 
-## 6. Component Patterns
-**File naming**: `ComponentName.jsx` (PascalCase)
-**Export**: `export default` for single component per file
-**Props**: Destructure in function signature, type via JSDoc if complex
-**Hooks**: Use early, call at top level, never inside conditionals
-**Styles**: Tailwind classes first, inline styles for computed/dynamic values
-**Event handlers**: Prefix with `handle*`, e.g. `handleLaunch`, `handleBlur`, `onCancel`
+## 5. localStorage Keys
+| Key            | Values                                           |
+|----------------|--------------------------------------------------|
+| `snake-theme`  | Any key present in `THEMES` (e.g. `ocean-blue`) |
 
-## 7. Panels & Layout
-Panels follow this header pattern (see `App.jsx > PanelHeader`):
-- Neural dot indicator (active/inactive)
-- Block symbol: `▓ LABEL`
-- Optional process label with ▸ separator (active processes only)
-- Use `agent-panel` class for styling, `is-active` modifier for active state
+## 6. WCAG AA Requirements
+All themes must meet WCAG AA contrast:
+- **Text on background**: ≥ 4.5:1
+- **Graphics/UI elements on background**: ≥ 3:1 (accent, food colours)
 
-## 8. Tailwind & Styling
-- Use Tailwind utilities for layout, spacing, text, transitions
-- Inline `style` prop for computed/dynamic values (e.g., colors based on state)
-- DaisyUI badges: `badge-warning`, `badge-success`, `badge-error`, `badge-info`, `badge-ghost`
-- Colour palette for neural UI: cyan-400 (`rgba(0,210,255,*)`), purple/pink, yellow/red accents
-- Font size: use `text-xs` (12px), `text-sm` (14px) for UI labels and lists
+Verify new themes using the Playwright WCAG test in `tests/theme.spec.js`.
 
-## 9. Refs for DOM Access
-Use `useRef()` for uncontrolled inputs and imperative DOM operations:
-```javascript
-const budgetRef = useRef(null);
-const val = budgetRef.current?.value ?? '';
-```
-For form capture, always check `ref.current?.value` (optional chaining).
+## 7. Performance Budget
+- Theme switch (including canvas redraw) must complete in < 5 ms
+- No timers, async work, or DOM layout triggered during `applyTheme()`
 
-## 10. Resizable Panes
-Pattern from `App.jsx` for drag-to-resize:
-- Track `dragging` state in `useRef(false)`
-- `onMouseDown` → set `dragging=true`, add global `mousemove`/`mouseup` listeners
-- On `mouseMove`: calculate delta, update width with `Math.max/min` clamping
-- On `mouseUp`: remove listeners, reset cursor, enable text selection
-
-## 11. API Endpoints
-All API calls proxy through Vite to `http://localhost:7420` (see `vite.config.js`):
-- `/api/state` → GET current application state
-- `/api/repo` → GET repository info (`{ root, hasStatusIndex, hasCadeAgent }`)
-- `/api/processes` → GET running processes
-- `/api/launch` → POST to launch epic (body: `{ epics: [n], budget?: float, model?: string, timeout?: number }`)
-- `/events` → EventSource (SSE) for real-time updates
-
-## 12. Code Reuse Rules
-**grep before write**: Search existing code for similar patterns before implementing:
-```bash
-grep -r "handleLaunch\|handleBlur" cade-ui/src/  # Check existing patterns
-```
-Add new helpers to `lib/` if used in 2+ components. Keep components focused on UI logic.
-
-## 13. File Format
-- JSX for UI components and hooks
-- JS for pure utility/export files
-- CSS: `index.css` (Tailwind directives) only, component styles via Tailwind + inline
-- No styled-components, CSS modules, or framework-specific styling solutions
-
-## 14. Development Workflow
-```bash
-npm run dev      # Vite dev server + Express server concurrently
-npm run build    # Vite build → dist/
-npm run preview  # Serve built output
-npm run server   # Express server only (debugging)
-```
-- Dev runs on http://localhost:5173 (Vite), proxies `/api` and `/events` to port 7420
-- Server runs on port 7420
-- Console errors caught and silently swallowed in hooks (try/catch, optional chaining)
+## 8. No Build Step
+There is no compile, transpile, or bundle step for the game itself.
+Avoid ES module syntax (`import`/`export`) in `index.html` — it must open as a plain file.
